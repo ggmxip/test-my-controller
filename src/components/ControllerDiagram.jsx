@@ -1,5 +1,5 @@
 import { detectControllerType, getFaceButtonPositions } from '../utils/controllerMapping';
-import { detectAxisLayout } from '../utils/axisDetection';
+import { getStickPairs } from '../utils/axisDetection';
 
 const BODY_PATH = `
   M 50,70 C 50,25 85,12 115,12 L 145,12 C 175,12 195,22 202,38 L 202,52 C 202,64 192,70 176,70 L 80,70
@@ -10,149 +10,141 @@ const BODY_PATH = `
   C 355,12 390,25 390,70 Z
 `;
 
-const layoutCoords = {
-  dPad: { x: 95, y: 155 },
-  leftStick: { x: 120, y: 98 },
-  rightStick: { x: 320, y: 98 },
-  faceButtons: { x: 320, y: 160 },
-  select: { x: 175, y: 140 },
-  start: { x: 210, y: 140 },
-  home: { x: 192, y: 108 },
-  lt: { x: 68, y: 22 },
-  rt: { x: 320, y: 22 },
-  lb: { x: 80, y: 42 },
-  rb: { x: 300, y: 42 },
-};
+function getLayout(type) {
+  const xbox = {
+    leftUpper: { type: 'stick', x: 125, y: 95, xIdx: 0, yIdx: 1, label: 'L' },
+    leftLower: { type: 'dpad', x: 100, y: 155 },
+    rightUpper: { type: 'face', x: 315, y: 132 },
+    rightLower: { type: 'stick', x: 315, y: 175, xIdx: 2, yIdx: 3, label: 'R' },
+    select: { x: 178, y: 140 },
+    start: { x: 215, y: 140 },
+  };
+  const ps = {
+    leftUpper: { type: 'dpad', x: 100, y: 95 },
+    leftLower: { type: 'stick', x: 125, y: 155, xIdx: 0, yIdx: 1, label: 'L' },
+    rightUpper: { type: 'face', x: 315, y: 132 },
+    rightLower: { type: 'stick', x: 315, y: 175, xIdx: 2, yIdx: 3, label: 'R' },
+    select: { x: 178, y: 140 },
+    start: { x: 215, y: 140 },
+  };
+  if (type === 'ps5' || type === 'ps4') return ps;
+  return xbox;
+}
 
-function DPadArrows({ buttons }) {
+function DPadSVG({ x, y, buttons }) {
   const up = buttons[12]?.pressed;
   const down = buttons[13]?.pressed;
   const left = buttons[14]?.pressed;
   const right = buttons[15]?.pressed;
-  const { x, y } = layoutCoords.dPad;
-  const s = 26;
+  const sz = 24, gap = 28;
+
+  const btn = (cx, cy, pressed, label) => (
+    <g>
+      <rect x={cx - sz / 2} y={cy - sz / 2} width={sz} height={sz} rx={4}
+        fill={pressed ? '#4caf50' : '#1a1a2e'} stroke={pressed ? '#4caf50' : '#444'} strokeWidth={1.5}
+        style={{ transition: 'all 0.06s' }} />
+      <text x={cx} y={cy + 4} textAnchor="middle" fill={pressed ? '#000' : '#888'} fontSize={12} fontWeight="bold">{label}</text>
+    </g>
+  );
 
   return (
     <g>
-      <rect x={x - s / 2} y={y - s / 2 - s} width={s} height={s} rx={4}
-        fill={up ? '#4caf50' : '#222'} stroke={up ? '#4caf50' : '#444'} strokeWidth={1.5}
-        style={{ transition: 'all 0.08s' }} />
-      <text x={x} y={y - s / 2 - s / 2 + 4} textAnchor="middle" fill={up ? '#000' : '#888'} fontSize={12} fontWeight="bold">▲</text>
-
-      <rect x={x - s / 2} y={y + s / 2} width={s} height={s} rx={4}
-        fill={down ? '#4caf50' : '#222'} stroke={down ? '#4caf50' : '#444'} strokeWidth={1.5}
-        style={{ transition: 'all 0.08s' }} />
-      <text x={x} y={y + s / 2 + s / 2 + 4} textAnchor="middle" fill={down ? '#000' : '#888'} fontSize={12} fontWeight="bold">▼</text>
-
-      <rect x={x - s / 2 - s} y={y - s / 2} width={s} height={s} rx={4}
-        fill={left ? '#4caf50' : '#222'} stroke={left ? '#4caf50' : '#444'} strokeWidth={1.5}
-        style={{ transition: 'all 0.08s' }} />
-      <text x={x - s / 2} y={y + 4} textAnchor="middle" fill={left ? '#000' : '#888'} fontSize={12} fontWeight="bold">◀</text>
-
-      <rect x={x + s / 2} y={y - s / 2} width={s} height={s} rx={4}
-        fill={right ? '#4caf50' : '#222'} stroke={right ? '#4caf50' : '#444'} strokeWidth={1.5}
-        style={{ transition: 'all 0.08s' }} />
-      <text x={x + s + s / 2} y={y + 4} textAnchor="middle" fill={right ? '#000' : '#888'} fontSize={12} fontWeight="bold">▶</text>
+      {btn(x, y - gap, up, '▲')}
+      {btn(x, y + gap, down, '▼')}
+      {btn(x - gap, y, left, '◀')}
+      {btn(x + gap, y, right, '▶')}
     </g>
   );
 }
 
-function FaceButtonsSVG({ buttons, type }) {
+function FaceButtonsSVG({ x, y, buttons, type }) {
   const faces = getFaceButtonPositions(type);
-  const { x, y } = layoutCoords.faceButtons;
-  const r = 22;
-  const gap = 28;
-  const pressed = [
-    buttons[0]?.pressed, // bottom
-    buttons[1]?.pressed, // right
-    buttons[2]?.pressed, // left
-    buttons[3]?.pressed, // top
-  ];
-  const colors = [faces.bottom.color, faces.right.color, faces.left.color, faces.top.color];
-  const labels = [faces.bottom.label, faces.right.label, faces.left.label, faces.top.label];
-  const positions = [
-    { dx: 0, dy: gap },     // bottom
-    { dx: gap, dy: 0 },     // right
-    { dx: -gap, dy: 0 },    // left
-    { dx: 0, dy: -gap },    // top
+  const r = 20, gap = 26;
+
+  const items = [
+    { dx: 0, dy: gap, idx: 0, color: faces.bottom.color, label: faces.bottom.label },
+    { dx: gap, dy: 0, idx: 1, color: faces.right.color, label: faces.right.label },
+    { dx: -gap, dy: 0, idx: 2, color: faces.left.color, label: faces.left.label },
+    { dx: 0, dy: -gap, idx: 3, color: faces.top.color, label: faces.top.label },
   ];
 
   return (
     <g>
-      {positions.map((p, i) => (
+      {items.map((item, i) => (
         <g key={i}>
-          <circle cx={x + p.dx} cy={y + p.dy} r={r / 2}
-            fill={pressed[i] ? colors[i] : '#1a1a2e'}
-            stroke={pressed[i] ? colors[i] : '#555'}
+          <circle cx={x + item.dx} cy={y + item.dy} r={r / 2}
+            fill={buttons[item.idx]?.pressed ? item.color : '#1a1a2e'}
+            stroke={buttons[item.idx]?.pressed ? item.color : '#555'}
             strokeWidth={1.5}
-            style={{ transition: 'all 0.08s' }} />
-          <text x={x + p.dx} y={y + p.dy + 4} textAnchor="middle"
-            fill={pressed[i] ? '#000' : '#ccc'} fontSize={11} fontWeight="bold">
-            {labels[i]}
-          </text>
+            style={{ transition: 'all 0.06s' }} />
+          <text x={x + item.dx} y={y + item.dy + 4} textAnchor="middle"
+            fill={buttons[item.idx]?.pressed ? '#000' : '#ccc'} fontSize={10} fontWeight="bold">{item.label}</text>
         </g>
       ))}
     </g>
   );
 }
 
-function AnalogStickSVG({ axes, xIdx, yIdx, cx, cy }) {
+function StickSVG({ cx, cy, axes, xIdx, yIdx, label }) {
   const x = axes[xIdx] || 0;
   const y = axes[yIdx] || 0;
-  const r = 24;
-  const knobR = 10;
-  const sx = cx + x * (r - knobR);
-  const sy = cy + y * (r - knobR);
+  const outerR = 22, knobR = 9;
+  const sx = cx + x * (outerR - knobR - 2);
+  const sy = cy + y * (outerR - knobR - 2);
 
   return (
     <g>
-      <circle cx={cx} cy={cy} r={r} fill="#0d0d18" stroke="#444" strokeWidth={1.5} />
-      <circle cx={cx} cy={cy} r={r * 0.25} fill="none" stroke="#333" strokeWidth={1} strokeDasharray="4 4" />
-      <line x1={cx - r} y1={cy} x2={cx + r} y2={cy} stroke="#222" strokeWidth={1} />
-      <line x1={cx} y1={cy - r} x2={cx} y2={cy + r} stroke="#222" strokeWidth={1} />
+      <circle cx={cx} cy={cy} r={outerR} fill="#0d0d18" stroke="#444" strokeWidth={1.5} />
+      <circle cx={cx} cy={cy} r={outerR * 0.25} fill="none" stroke="#333" strokeWidth={1} strokeDasharray="3 3" />
+      <line x1={cx - outerR} y1={cy} x2={cx + outerR} y2={cy} stroke="#222" strokeWidth={1} />
+      <line x1={cx} y1={cy - outerR} x2={cx} y2={cy + outerR} stroke="#222" strokeWidth={1} />
       <circle cx={sx} cy={sy} r={knobR} fill="#4caf50" stroke="#66bb6a" strokeWidth={1.5}
-        style={{ transition: 'all 0.05s' }} />
+        style={{ transition: 'all 0.04s' }} />
+      <text x={cx} y={cy + outerR + 12} textAnchor="middle" fill="#666" fontSize={8}>{label}</text>
     </g>
   );
 }
 
-function CenterButtonsSVG({ buttons, type }) {
+function CenterButtonsSVG({ buttons, layout, type }) {
   const sel = buttons[8]?.pressed;
   const sta = buttons[9]?.pressed;
   const home = buttons[16]?.pressed;
-  const { select, start, home: homePos } = layoutCoords;
-  const r = 10;
-
+  const r = 10, gap = 30;
   const selLabel = type === 'switch_pro' ? '−' : 'SEL';
   const staLabel = type === 'switch_pro' ? '+' : 'STA';
+  const cx = (layout.select.x + layout.start.x) / 2;
+  const cy = layout.select.y;
 
   return (
     <g>
-      <rect x={select.x - r} y={select.y - r} width={r * 2} height={r * 2} rx={r}
-        fill={sel ? '#ff9800' : '#222'} stroke={sel ? '#ff9800' : '#444'} strokeWidth={1}
-        style={{ transition: 'all 0.08s' }} />
-      <text x={select.x} y={select.y + 3} textAnchor="middle" fill={sel ? '#000' : '#888'} fontSize={8} fontWeight="bold">{selLabel}</text>
+      <rect x={layout.select.x - r} y={layout.select.y - r} width={r * 2} height={r * 2} rx={r}
+        fill={sel ? '#ff9800' : '#1a1a2e'} stroke={sel ? '#ff9800' : '#444'} strokeWidth={1}
+        style={{ transition: 'all 0.06s' }} />
+      <text x={layout.select.x} y={layout.select.y + 3} textAnchor="middle" fill={sel ? '#000' : '#888'} fontSize={8} fontWeight="bold">{selLabel}</text>
 
-      <rect x={start.x - r} y={start.y - r} width={r * 2} height={r * 2} rx={r}
-        fill={sta ? '#ff9800' : '#222'} stroke={sta ? '#ff9800' : '#444'} strokeWidth={1}
-        style={{ transition: 'all 0.08s' }} />
-      <text x={start.x} y={start.y + 3} textAnchor="middle" fill={sta ? '#000' : '#888'} fontSize={8} fontWeight="bold">{staLabel}</text>
+      <rect x={layout.start.x - r} y={layout.start.y - r} width={r * 2} height={r * 2} rx={r}
+        fill={sta ? '#ff9800' : '#1a1a2e'} stroke={sta ? '#ff9800' : '#444'} strokeWidth={1}
+        style={{ transition: 'all 0.06s' }} />
+      <text x={layout.start.x} y={layout.start.y + 3} textAnchor="middle" fill={sta ? '#000' : '#888'} fontSize={8} fontWeight="bold">{staLabel}</text>
 
       {buttons[16] !== undefined && (
-        <>
-          <circle cx={homePos.x} cy={homePos.y} r={r + 2}
+        <g>
+          <circle cx={cx} cy={cy - gap} r={r}
             fill={home ? '#f44336' : '#1a1a2e'} stroke={home ? '#f44336' : '#555'} strokeWidth={1}
-            style={{ transition: 'all 0.08s' }} />
-          <text x={homePos.x} y={homePos.y + 3} textAnchor="middle" fill={home ? '#000' : '#888'} fontSize={7} fontWeight="bold">HOME</text>
-        </>
+            style={{ transition: 'all 0.06s' }} />
+          <text x={cx} y={cy - gap + 3} textAnchor="middle" fill={home ? '#000' : '#888'} fontSize={7} fontWeight="bold">●</text>
+        </g>
       )}
     </g>
   );
 }
 
 function TriggerBumpersSVG({ buttons, type }) {
-  const lt = buttons[6]?.pressed || buttons[6]?.value > 0.5;
-  const rt = buttons[7]?.pressed || buttons[7]?.value > 0.5;
+  const { x: lx } = getLayout(type).leftUpper;
+  const { x: rx } = getLayout(type).rightUpper;
+
+  const lt = (buttons[6]?.value || 0) > 0.3;
+  const rt = (buttons[7]?.value || 0) > 0.3;
   const lb = buttons[4]?.pressed;
   const rb = buttons[5]?.pressed;
 
@@ -161,19 +153,22 @@ function TriggerBumpersSVG({ buttons, type }) {
   const lbLabel = type === 'switch_pro' ? 'L' : type === 'ps5' || type === 'ps4' ? 'L1' : 'LB';
   const rbLabel = type === 'switch_pro' ? 'R' : type === 'ps5' || type === 'ps4' ? 'R1' : 'RB';
 
+  const pos = [
+    { x: lx, y: 22, label: ltLabel, pressed: lt },
+    { x: rx, y: 22, label: rtLabel, pressed: rt },
+    { x: lx, y: 44, label: lbLabel, pressed: lb },
+    { x: rx, y: 44, label: rbLabel, pressed: rb },
+  ];
+
   return (
     <g>
-      {[{ ...layoutCoords.lt, label: ltLabel, pressed: lt },
-        { ...layoutCoords.rt, label: rtLabel, pressed: rt },
-        { ...layoutCoords.lb, label: lbLabel, pressed: lb },
-        { ...layoutCoords.rb, label: rbLabel, pressed: rb }].map((b, i) => (
+      {pos.map((b, i) => (
         <g key={i}>
           <rect x={b.x - 18} y={b.y - 8} width={36} height={16} rx={8}
             fill={b.pressed ? '#ff9800' : '#1a1a2e'}
-            stroke={b.pressed ? '#ff9800' : '#444'}
-            strokeWidth={1}
-            style={{ transition: 'all 0.08s' }} />
-          <text x={b.x} y={b.y + 4} textAnchor="middle" fill={b.pressed ? '#000' : '#aaa'} fontSize={9} fontWeight="bold">{b.label}</text>
+            stroke={b.pressed ? '#ff9800' : '#444'} strokeWidth={1}
+            style={{ transition: 'all 0.06s' }} />
+          <text x={b.x} y={b.y + 4} textAnchor="middle" fill={b.pressed ? '#000' : '#aaa'} fontSize={8} fontWeight="bold">{b.label}</text>
         </g>
       ))}
     </g>
@@ -184,12 +179,29 @@ export default function ControllerDiagram({ gamepad }) {
   if (!gamepad) return null;
 
   const type = detectControllerType(gamepad);
-  const layout = detectAxisLayout(gamepad.axes);
+  const layout = getLayout(type);
+  const pairs = getStickPairs(gamepad.axes);
   const b = gamepad.buttons;
 
-  const rightStickAxes = layout.sticks.length > 1
-    ? layout.sticks[1]
-    : { x: 2, y: 3 };
+  const getStickCoords = (type) => {
+    const l = getLayout(type);
+    for (const key of ['leftUpper', 'leftLower', 'rightUpper', 'rightLower']) {
+      const item = l[key];
+      if (item.type === 'stick' && item.label === 'L') return { x: item.x, y: item.y, xIdx: 0, yIdx: 1 };
+    }
+    for (const key of ['leftUpper', 'leftLower', 'rightUpper', 'rightLower']) {
+      const item = l[key];
+      if (item.type === 'stick' && item.label === 'R') return { x: item.x, y: item.y, xIdx: 2, yIdx: 3 };
+    }
+    return { x: 125, y: 95, xIdx: 0, yIdx: 1 };
+  };
+
+  const leftStick = getStickCoords(type);
+  const rightStick = {
+    x: layout.rightLower.type === 'stick' ? layout.rightLower.x : 315,
+    y: layout.rightLower.type === 'stick' ? layout.rightLower.y : 175,
+    xIdx: 2, yIdx: 3,
+  };
 
   return (
     <div style={{ marginBottom: '16px' }}>
@@ -199,29 +211,21 @@ export default function ControllerDiagram({ gamepad }) {
             <stop offset="0%" stopColor="#1a1a30" />
             <stop offset="100%" stopColor="#0d0d18" />
           </linearGradient>
-          <filter id="glow">
-            <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
-            <feMerge><feMergeNode in="coloredBlur"/><feMergeNode in="SourceGraphic"/></feMerge>
-          </filter>
         </defs>
-
-        {/* Controller body silhouette */}
         <path d={BODY_PATH} fill="url(#bodyGrad)" stroke="#2a2a50" strokeWidth="2" />
-        <path d={BODY_PATH} fill="none" stroke="#4caf50" strokeWidth="1" opacity="0.1" />
+        <path d={BODY_PATH} fill="none" stroke="#4caf50" strokeWidth="1" opacity="0.08" />
+        <text x={220} y={265} textAnchor="middle" fill="#333" fontSize={10} letterSpacing="2">{type.toUpperCase()}</text>
 
-        {/* Type label */}
-        <text x={220} y={265} textAnchor="middle" fill="#333" fontSize={11} textTransform="uppercase" letterSpacing="2">
-          {type.toUpperCase()}
-        </text>
-
-        {/* Interactive elements */}
         <TriggerBumpersSVG buttons={b} type={type} />
-        <DPadArrows buttons={b} />
-        <FaceButtonsSVG buttons={b} type={type} />
-        <CenterButtonsSVG buttons={b} type={type} />
-        <AnalogStickSVG axes={gamepad.axes} xIdx={0} yIdx={1} cx={layoutCoords.leftStick.x} cy={layoutCoords.leftStick.y} />
-        <AnalogStickSVG axes={gamepad.axes} xIdx={rightStickAxes.x} yIdx={rightStickAxes.y}
-          cx={layoutCoords.rightStick.x} cy={layoutCoords.rightStick.y} />
+        <DPadSVG x={layout.leftUpper.type === 'dpad' ? layout.leftUpper.x : layout.leftLower.x}
+                 y={layout.leftUpper.type === 'dpad' ? layout.leftUpper.y : layout.leftLower.y}
+                 buttons={b} />
+        <FaceButtonsSVG x={layout.rightUpper.x} y={layout.rightUpper.y} buttons={b} type={type} />
+        <CenterButtonsSVG buttons={b} layout={layout} type={type} />
+        <StickSVG cx={leftStick.x} cy={leftStick.y} axes={gamepad.axes}
+                  xIdx={leftStick.xIdx} yIdx={leftStick.yIdx} label="L" />
+        <StickSVG cx={rightStick.x} cy={rightStick.y} axes={gamepad.axes}
+                  xIdx={rightStick.xIdx} yIdx={rightStick.yIdx} label="R" />
       </svg>
     </div>
   );

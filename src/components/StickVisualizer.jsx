@@ -1,7 +1,7 @@
-import { useState, useRef, useEffect } from 'react';
-import { detectAxisLayout } from '../utils/axisDetection';
+import { useRef, useEffect } from 'react';
+import { getStickPairs } from '../utils/axisDetection';
 
-const SIZE = 170;
+const SIZE = 150;
 const CENTER = SIZE / 2;
 const RADIUS = (SIZE / 2) - 10;
 
@@ -55,18 +55,18 @@ function StickCanvas({ axes, xIdx, yIdx, label }) {
     const sy = CENTER + y * RADIUS;
 
     ctx.beginPath();
-    ctx.arc(sx, sy, 10, 0, Math.PI * 2);
+    ctx.arc(sx, sy, 9, 0, Math.PI * 2);
     ctx.fillStyle = '#4caf50';
     ctx.fill();
     ctx.strokeStyle = '#66bb6a';
     ctx.lineWidth = 2;
     ctx.stroke();
 
-    const gradient = ctx.createRadialGradient(sx, sy, 0, sx, sy, 20);
+    const gradient = ctx.createRadialGradient(sx, sy, 0, sx, sy, 18);
     gradient.addColorStop(0, 'rgba(76, 175, 80, 0.3)');
     gradient.addColorStop(1, 'rgba(76, 175, 80, 0)');
     ctx.beginPath();
-    ctx.arc(sx, sy, 20, 0, Math.PI * 2);
+    ctx.arc(sx, sy, 18, 0, Math.PI * 2);
     ctx.fillStyle = gradient;
     ctx.fill();
   }, [axes, xIdx, yIdx]);
@@ -75,8 +75,8 @@ function StickCanvas({ axes, xIdx, yIdx, label }) {
   const y = axes[yIdx] || 0;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
-      <div style={{ fontSize: '12px', color: '#aaa', fontWeight: 'bold' }}>{label}</div>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '2px' }}>
+      <div style={{ fontSize: '11px', color: '#aaa', fontWeight: 'bold' }}>{label}</div>
       <canvas ref={canvasRef} width={SIZE} height={SIZE} style={{ borderRadius: '10px', background: '#0d0d16' }} />
       <div style={{ fontSize: '11px', color: '#888' }}>X: {x.toFixed(3)} Y: {y.toFixed(3)}</div>
     </div>
@@ -86,50 +86,62 @@ function StickCanvas({ axes, xIdx, yIdx, label }) {
 export default function StickVisualizer({ gamepad }) {
   if (!gamepad) return null;
 
-  const axes = gamepad.axes;
-  const layout = detectAxisLayout(axes);
+  const pairs = getStickPairs(gamepad.axes);
+  const triggerAxes = gamepad.axes.length >= 6
+    ? [{ idx: 4, label: 'LT (axis)' }, { idx: 5, label: 'RT (axis)' }]
+    : [];
 
-  const allAxisEls = [];
-  for (let i = 0; i < axes.length; i++) {
-    const isStick = layout.sticks.some(s => s.x === i || s.y === i);
-    const isTrigger = layout.triggerAxes.some(t => t.index === i);
-    if (!isStick && !isTrigger) {
-      allAxisEls.push({ index: i, value: axes[i] || 0 });
-    }
+  const otherAxes = [];
+  const used = new Set();
+  pairs.forEach(p => { used.add(p.x); used.add(p.y); });
+  triggerAxes.forEach(t => { used.add(t.idx); });
+  for (let i = 0; i < gamepad.axes.length; i++) {
+    if (!used.has(i)) otherAxes.push(i);
   }
 
   return (
     <div style={{ marginBottom: '16px' }}>
       <h3 style={{ margin: '0 0 12px', fontSize: '14px', color: '#aaa', textTransform: 'uppercase', letterSpacing: '1px' }}>
-        Analog Sticks & Axes
+        Axes
       </h3>
+
       <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
-        {layout.sticks.map((s, i) => (
-          <StickCanvas key={i} axes={axes} xIdx={s.x} yIdx={s.y} label={s.label} />
+        {pairs.slice(0, 2).map((p, i) => (
+          <StickCanvas key={i} axes={gamepad.axes} xIdx={p.x} yIdx={p.y} label={p.label} />
         ))}
+        {pairs.length > 2 && (
+          <details style={{ width: '100%', marginTop: '8px' }}>
+            <summary style={{ cursor: 'pointer', fontSize: '12px', color: '#888', textAlign: 'center' }}>
+              Additional Axis Pairs
+            </summary>
+            <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap', marginTop: '8px' }}>
+              {pairs.slice(2).map((p, i) => (
+                <StickCanvas key={i} axes={gamepad.axes} xIdx={p.x} yIdx={p.y} label={p.label} />
+              ))}
+            </div>
+          </details>
+        )}
       </div>
 
-      {layout.triggerAxes.length > 0 && (
-        <div style={{ marginTop: '10px', fontSize: '11px', color: '#666', textAlign: 'center' }}>
-          Trigger axes: {layout.triggerAxes.map(t => `${t.label}=${(axes[t.index] || 0).toFixed(3)}`).join(' | ')}
-        </div>
-      )}
+      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'center', marginTop: '10px', fontSize: '11px', color: '#666' }}>
+        {gamepad.axes.map((v, i) => {
+          const isStick = pairs.some(p => p.x === i || p.y === i);
+          const isTrigger = triggerAxes.some(t => t.idx === i);
+          return (
+            <span key={i} style={{
+              background: isStick ? '#1a2a1a' : isTrigger ? '#2a2a1a' : '#151525',
+              padding: '2px 8px', borderRadius: '4px', border: '1px solid #222',
+            }}>
+              {i}: {v.toFixed(3)}
+              {isStick && <span style={{ color: '#4caf50', marginLeft: '4px' }}>↕</span>}
+              {isTrigger && <span style={{ color: '#ff9800', marginLeft: '4px' }}>→</span>}
+            </span>
+          );
+        })}
+      </div>
 
-      {allAxisEls.length > 0 && (
-        <details style={{ marginTop: '10px', fontSize: '12px', color: '#666' }}>
-          <summary style={{ cursor: 'pointer', color: '#888' }}>All Raw Axes</summary>
-          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '6px' }}>
-            {axes.map((v, i) => (
-              <span key={i} style={{ background: '#151525', padding: '2px 8px', borderRadius: '4px' }}>
-                [{i}]: {v.toFixed(3)}
-              </span>
-            ))}
-          </div>
-        </details>
-      )}
-
-      {axes.length < 2 && (
-        <div style={{ color: '#666', fontSize: '13px', textAlign: 'center' }}>No analog sticks detected</div>
+      {gamepad.axes.length < 2 && (
+        <div style={{ color: '#666', fontSize: '13px', textAlign: 'center' }}>No axes detected</div>
       )}
     </div>
   );
