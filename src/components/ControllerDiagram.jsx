@@ -62,10 +62,10 @@ function FaceButtonsSVG({ x, y, buttons, type }) {
   const r = 20, gap = 26;
 
   const items = [
-    { dx: 0, dy: gap, idx: 0, color: faces.bottom.color, label: faces.bottom.label },
-    { dx: gap, dy: 0, idx: 1, color: faces.right.color, label: faces.right.label },
-    { dx: -gap, dy: 0, idx: 2, color: faces.left.color, label: faces.left.label },
-    { dx: 0, dy: -gap, idx: 3, color: faces.top.color, label: faces.top.label },
+    { dx: 0, dy: gap, idx: faces.bottom.btnIdx, color: faces.bottom.color, label: faces.bottom.label },
+    { dx: gap, dy: 0, idx: faces.right.btnIdx, color: faces.right.color, label: faces.right.label },
+    { dx: -gap, dy: 0, idx: faces.left.btnIdx, color: faces.left.color, label: faces.left.label },
+    { dx: 0, dy: -gap, idx: faces.top.btnIdx, color: faces.top.color, label: faces.top.label },
   ];
 
   return (
