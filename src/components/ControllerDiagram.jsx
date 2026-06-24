@@ -1,5 +1,5 @@
 import { detectControllerType, getFaceButtonPositions } from '../utils/controllerMapping';
-import { getStickPairs } from '../utils/axisDetection';
+import { getStickPairs, findRightStickAxes } from '../utils/axisDetection';
 
 const BODY_PATH = `
   M 50,70 C 50,25 85,12 115,12 L 145,12 C 175,12 195,22 202,38 L 202,52 C 202,64 192,70 176,70 L 80,70
@@ -189,18 +189,15 @@ export default function ControllerDiagram({ gamepad }) {
       const item = l[key];
       if (item.type === 'stick' && item.label === 'L') return { x: item.x, y: item.y, xIdx: 0, yIdx: 1 };
     }
-    for (const key of ['leftUpper', 'leftLower', 'rightUpper', 'rightLower']) {
-      const item = l[key];
-      if (item.type === 'stick' && item.label === 'R') return { x: item.x, y: item.y, xIdx: 2, yIdx: 3 };
-    }
     return { x: 125, y: 95, xIdx: 0, yIdx: 1 };
   };
 
   const leftStick = getStickCoords(type);
+  const rsAxes = findRightStickAxes(gamepad.axes);
   const rightStick = {
     x: layout.rightLower.type === 'stick' ? layout.rightLower.x : 315,
     y: layout.rightLower.type === 'stick' ? layout.rightLower.y : 175,
-    xIdx: 2, yIdx: 3,
+    xIdx: rsAxes.xIdx, yIdx: rsAxes.yIdx,
   };
 
   return (

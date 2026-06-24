@@ -87,17 +87,6 @@ export default function StickVisualizer({ gamepad }) {
   if (!gamepad) return null;
 
   const pairs = getStickPairs(gamepad.axes);
-  const triggerAxes = gamepad.axes.length >= 6
-    ? [{ idx: 4, label: 'LT (axis)' }, { idx: 5, label: 'RT (axis)' }]
-    : [];
-
-  const otherAxes = [];
-  const used = new Set();
-  pairs.forEach(p => { used.add(p.x); used.add(p.y); });
-  triggerAxes.forEach(t => { used.add(t.idx); });
-  for (let i = 0; i < gamepad.axes.length; i++) {
-    if (!used.has(i)) otherAxes.push(i);
-  }
 
   return (
     <div style={{ marginBottom: '16px' }}>
@@ -106,38 +95,19 @@ export default function StickVisualizer({ gamepad }) {
       </h3>
 
       <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
-        {pairs.slice(0, 2).map((p, i) => (
+        {pairs.map((p, i) => (
           <StickCanvas key={i} axes={gamepad.axes} xIdx={p.x} yIdx={p.y} label={p.label} />
         ))}
-        {pairs.length > 2 && (
-          <details style={{ width: '100%', marginTop: '8px' }}>
-            <summary style={{ cursor: 'pointer', fontSize: '12px', color: '#888', textAlign: 'center' }}>
-              Additional Axis Pairs
-            </summary>
-            <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap', marginTop: '8px' }}>
-              {pairs.slice(2).map((p, i) => (
-                <StickCanvas key={i} axes={gamepad.axes} xIdx={p.x} yIdx={p.y} label={p.label} />
-              ))}
-            </div>
-          </details>
-        )}
       </div>
 
-      <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', justifyContent: 'center', marginTop: '10px', fontSize: '11px', color: '#666' }}>
-        {gamepad.axes.map((v, i) => {
-          const isStick = pairs.some(p => p.x === i || p.y === i);
-          const isTrigger = triggerAxes.some(t => t.idx === i);
-          return (
-            <span key={i} style={{
-              background: isStick ? '#1a2a1a' : isTrigger ? '#2a2a1a' : '#151525',
-              padding: '2px 8px', borderRadius: '4px', border: '1px solid #222',
-            }}>
-              {i}: {v.toFixed(3)}
-              {isStick && <span style={{ color: '#4caf50', marginLeft: '4px' }}>↕</span>}
-              {isTrigger && <span style={{ color: '#ff9800', marginLeft: '4px' }}>→</span>}
-            </span>
-          );
-        })}
+      <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', justifyContent: 'center', marginTop: '10px', fontSize: '11px', color: '#666' }}>
+        {gamepad.axes.map((v, i) => (
+          <span key={i} style={{ background: '#151525', padding: '2px 8px', borderRadius: '4px', border: '1px solid #222' }}>
+            {i}: {v.toFixed(3)}
+            {pairs.some(p => p.x === i) && <span style={{ color: '#4caf50', marginLeft: '3px' }}>X</span>}
+            {pairs.some(p => p.y === i) && <span style={{ color: '#4caf50', marginLeft: '3px' }}>Y</span>}
+          </span>
+        ))}
       </div>
 
       {gamepad.axes.length < 2 && (
