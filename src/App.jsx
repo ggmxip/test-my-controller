@@ -1,4 +1,3 @@
-import { useState } from 'react';
 import useGamepad from './hooks/useGamepad';
 import ControllerSelector from './components/ControllerSelector';
 import ControllerInfo from './components/ControllerInfo';
@@ -11,38 +10,8 @@ import PollingRate from './components/PollingRate';
 import RawDataPanel from './components/RawDataPanel';
 import './App.css';
 
-const DRIFT_SAMPLE_COUNT = 60;
-
-function detectDrift(samples) {
-  if (!samples || samples.length < 30) return { offsetX: 0, offsetY: 0, severity: 'none' };
-  const avgX = samples.reduce((s, p) => s + p.x, 0) / samples.length;
-  const avgY = samples.reduce((s, p) => s + p.y, 0) / samples.length;
-  const dist = Math.sqrt(avgX * avgX + avgY * avgY);
-  let severity = 'none';
-  if (dist > 0.05) severity = 'severe';
-  else if (dist > 0.03) severity = 'moderate';
-  else if (dist > 0.015) severity = 'noticeable';
-  return { offsetX: avgX, offsetY: avgY, severity };
-}
-
 function App() {
   const { gamepads, activeGamepad, connectedCount, activeIndex, setActiveIndex } = useGamepad();
-  const [driftData, setDriftData] = useState({});
-
-  const handleDriftUpdate = (stickIndex, x, y) => {
-    setDriftData(prev => {
-      const key = `${activeIndex}-${stickIndex}`;
-      const existing = prev[key] || [];
-      const samples = [...existing, { x, y }];
-      if (samples.length > DRIFT_SAMPLE_COUNT) samples.shift();
-      return { ...prev, [key]: samples };
-    });
-  };
-
-  const getDriftFor = (stickIndex) => {
-    const key = `${activeIndex}-${stickIndex}`;
-    return detectDrift(driftData[key]);
-  };
 
   return (
     <div className="app">
@@ -67,14 +36,7 @@ function App() {
             <ControllerInfo gamepad={activeGamepad} />
             <ControllerDiagram gamepad={activeGamepad} />
             <ButtonGrid gamepad={activeGamepad} />
-            <StickVisualizer
-              gamepad={activeGamepad}
-              driftData={{
-                0: getDriftFor(0),
-                1: getDriftFor(1),
-              }}
-              onDriftUpdate={handleDriftUpdate}
-            />
+            <StickVisualizer gamepad={activeGamepad} />
             <TriggerBar gamepad={activeGamepad} />
             <VibrationTester gamepad={activeGamepad} />
             <PollingRate gamepad={activeGamepad} />

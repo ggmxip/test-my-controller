@@ -9,7 +9,7 @@ export function detectControllerType(gamepad) {
 
   if (id.includes('dualsense') || id.includes('ps5') || id.includes('dual sense')) return 'ps5';
   if (id.includes('dualshock') || (id.includes('wireless controller') && (vendor === VENDOR_SONY || !vendor))) return 'ps4';
-  if (id.includes('xbox')) return 'xbox';
+  if (id.includes('xbox') || id.includes('cosmic') || id.includes('ares')) return 'xbox';
   if (id.includes('pro controller') || vendor === VENDOR_NINTENDO) return 'switch_pro';
   if (id.includes('nswitch') || id.includes('switch')) return 'switch_pro';
   if (id.includes('stadia')) return 'stadia';
@@ -31,8 +31,8 @@ export function getButtonLabels(type) {
     switch_pro: ['B', 'A', 'Y', 'X', 'L', 'R', 'ZL', 'ZR', '−', '+', 'LS', 'RS', '⬆', '⬇', '⬅', '➡', 'Home'],
     stadia: ['A', 'B', 'X', 'Y', 'L1', 'R1', 'L2', 'R2', 'Capture', 'Menu', 'L3', 'R3', '⬆', '⬇', '⬅', '➡', 'Stadia'],
     steam: ['A', 'B', 'X', 'Y', 'L1', 'R1', 'L2', 'R2', 'Select', 'Start', 'LS', 'RS', '⬆', '⬇', '⬅', '➡', 'Steam'],
-    generic_standard: ['1', '2', '3', '4', 'L1', 'R1', 'L2', 'R2', 'Sel', 'Sta', 'L3', 'R3', '⬆', '⬇', '⬅', '➡', 'Home'],
-    generic: ['Btn0', 'Btn1', 'Btn2', 'Btn3', 'Btn4', 'Btn5', 'Btn6', 'Btn7', 'Btn8', 'Btn9', 'Btn10', 'Btn11', '⬆', '⬇', '⬅', '➡', 'Btn16'],
+    generic_standard: ['A', 'B', 'X', 'Y', 'LB', 'RB', 'LT', 'RT', 'Sel', 'Sta', 'LS', 'RS', '⬆', '⬇', '⬅', '➡', 'Home'],
+    generic: ['A', 'B', 'X', 'Y', 'LB', 'RB', 'LT', 'RT', 'Sel', 'Sta', 'LS', 'RS', '⬆', '⬇', '⬅', '➡', 'Home'],
   };
   return layouts[type] || layouts.generic;
 }

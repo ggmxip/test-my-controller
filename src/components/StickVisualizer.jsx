@@ -1,10 +1,11 @@
 import { useState, useRef, useEffect } from 'react';
+import { detectAxisLayout } from '../utils/axisDetection';
 
-const SIZE = 180;
+const SIZE = 170;
 const CENTER = SIZE / 2;
-const RADIUS = (SIZE / 2) - 12;
+const RADIUS = (SIZE / 2) - 10;
 
-function StickCanvas({ axes, index, label, driftSamples, onDriftUpdate }) {
+function StickCanvas({ axes, xIdx, yIdx, label }) {
   const canvasRef = useRef(null);
   const trailRef = useRef([]);
 
@@ -12,19 +13,17 @@ function StickCanvas({ axes, index, label, driftSamples, onDriftUpdate }) {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext('2d');
-    const x = axes[index * 2] || 0;
-    const y = axes[index * 2 + 1] || 0;
+    const x = axes[xIdx] || 0;
+    const y = axes[yIdx] || 0;
 
     ctx.clearRect(0, 0, SIZE, SIZE);
 
-    // Outer circle
     ctx.beginPath();
     ctx.arc(CENTER, CENTER, RADIUS, 0, Math.PI * 2);
     ctx.strokeStyle = '#333';
     ctx.lineWidth = 2;
     ctx.stroke();
 
-    // Inner deadzone circle
     ctx.beginPath();
     ctx.arc(CENTER, CENTER, RADIUS * 0.25, 0, Math.PI * 2);
     ctx.strokeStyle = '#2a2a2a';
@@ -33,7 +32,6 @@ function StickCanvas({ axes, index, label, driftSamples, onDriftUpdate }) {
     ctx.stroke();
     ctx.setLineDash([]);
 
-    // Crosshair
     ctx.beginPath();
     ctx.moveTo(CENTER - RADIUS, CENTER);
     ctx.lineTo(CENTER + RADIUS, CENTER);
@@ -43,7 +41,6 @@ function StickCanvas({ axes, index, label, driftSamples, onDriftUpdate }) {
     ctx.lineWidth = 1;
     ctx.stroke();
 
-    // Trail
     trailRef.current.push({ x, y });
     if (trailRef.current.length > 30) trailRef.current.shift();
     trailRef.current.forEach((p, i) => {
@@ -54,7 +51,6 @@ function StickCanvas({ axes, index, label, driftSamples, onDriftUpdate }) {
       ctx.fill();
     });
 
-    // Stick position
     const sx = CENTER + x * RADIUS;
     const sy = CENTER + y * RADIUS;
 
@@ -66,7 +62,6 @@ function StickCanvas({ axes, index, label, driftSamples, onDriftUpdate }) {
     ctx.lineWidth = 2;
     ctx.stroke();
 
-    // Glow
     const gradient = ctx.createRadialGradient(sx, sy, 0, sx, sy, 20);
     gradient.addColorStop(0, 'rgba(76, 175, 80, 0.3)');
     gradient.addColorStop(1, 'rgba(76, 175, 80, 0)');
@@ -74,56 +69,68 @@ function StickCanvas({ axes, index, label, driftSamples, onDriftUpdate }) {
     ctx.arc(sx, sy, 20, 0, Math.PI * 2);
     ctx.fillStyle = gradient;
     ctx.fill();
+  }, [axes, xIdx, yIdx]);
 
-    // Drift tracking
-    if (onDriftUpdate && Math.abs(x) < 0.1 && Math.abs(y) < 0.1) {
-      onDriftUpdate(index, x, y);
-    }
-  }, [axes, index, onDriftUpdate]);
+  const x = axes[xIdx] || 0;
+  const y = axes[yIdx] || 0;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '6px' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '4px' }}>
       <div style={{ fontSize: '12px', color: '#aaa', fontWeight: 'bold' }}>{label}</div>
-      <canvas ref={canvasRef} width={SIZE} height={SIZE} style={{ borderRadius: '12px', background: '#0d0d16' }} />
-      <div style={{ fontSize: '12px', color: '#888' }}>X: {(axes[index * 2] || 0).toFixed(3)} Y: {(axes[index * 2 + 1] || 0).toFixed(3)}</div>
+      <canvas ref={canvasRef} width={SIZE} height={SIZE} style={{ borderRadius: '10px', background: '#0d0d16' }} />
+      <div style={{ fontSize: '11px', color: '#888' }}>X: {x.toFixed(3)} Y: {y.toFixed(3)}</div>
     </div>
   );
 }
 
-export default function StickVisualizer({ gamepad, driftData, onDriftUpdate }) {
+export default function StickVisualizer({ gamepad }) {
   if (!gamepad) return null;
 
   const axes = gamepad.axes;
-  const drift = d => d || { offsetX: 0, offsetY: 0, severity: 'none' };
+  const layout = detectAxisLayout(axes);
+
+  const allAxisEls = [];
+  for (let i = 0; i < axes.length; i++) {
+    const isStick = layout.sticks.some(s => s.x === i || s.y === i);
+    const isTrigger = layout.triggerAxes.some(t => t.index === i);
+    if (!isStick && !isTrigger) {
+      allAxisEls.push({ index: i, value: axes[i] || 0 });
+    }
+  }
 
   return (
     <div style={{ marginBottom: '16px' }}>
       <h3 style={{ margin: '0 0 12px', fontSize: '14px', color: '#aaa', textTransform: 'uppercase', letterSpacing: '1px' }}>
-        Analog Sticks
+        Analog Sticks & Axes
       </h3>
-      <div style={{ display: 'flex', gap: '20px', justifyContent: 'center', flexWrap: 'wrap' }}>
-        {axes.length >= 2 && (
-          <div>
-            <StickCanvas axes={axes} index={0} label="Left Stick" driftSamples={driftData?.[0]} onDriftUpdate={onDriftUpdate} />
-            {drift(driftData?.[0]).severity !== 'none' && (
-              <div style={{ fontSize: '11px', color: '#ff9800', textAlign: 'center', marginTop: '4px' }}>
-                Drift: {drift(driftData?.[0]).severity}
-              </div>
-            )}
-          </div>
-        )}
-        {axes.length >= 4 && (
-          <div>
-            <StickCanvas axes={axes} index={1} label="Right Stick" driftSamples={driftData?.[1]} onDriftUpdate={onDriftUpdate} />
-            {drift(driftData?.[1]).severity !== 'none' && (
-              <div style={{ fontSize: '11px', color: '#ff9800', textAlign: 'center', marginTop: '4px' }}>
-                Drift: {drift(driftData?.[1]).severity}
-              </div>
-            )}
-          </div>
-        )}
+      <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
+        {layout.sticks.map((s, i) => (
+          <StickCanvas key={i} axes={axes} xIdx={s.x} yIdx={s.y} label={s.label} />
+        ))}
       </div>
-      {axes.length < 2 && <div style={{ color: '#666', fontSize: '13px', textAlign: 'center' }}>No analog sticks detected</div>}
+
+      {layout.triggerAxes.length > 0 && (
+        <div style={{ marginTop: '10px', fontSize: '11px', color: '#666', textAlign: 'center' }}>
+          Trigger axes: {layout.triggerAxes.map(t => `${t.label}=${(axes[t.index] || 0).toFixed(3)}`).join(' | ')}
+        </div>
+      )}
+
+      {allAxisEls.length > 0 && (
+        <details style={{ marginTop: '10px', fontSize: '12px', color: '#666' }}>
+          <summary style={{ cursor: 'pointer', color: '#888' }}>All Raw Axes</summary>
+          <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', marginTop: '6px' }}>
+            {axes.map((v, i) => (
+              <span key={i} style={{ background: '#151525', padding: '2px 8px', borderRadius: '4px' }}>
+                [{i}]: {v.toFixed(3)}
+              </span>
+            ))}
+          </div>
+        </details>
+      )}
+
+      {axes.length < 2 && (
+        <div style={{ color: '#666', fontSize: '13px', textAlign: 'center' }}>No analog sticks detected</div>
+      )}
     </div>
   );
 }
