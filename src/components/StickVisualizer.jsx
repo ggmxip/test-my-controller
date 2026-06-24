@@ -1,5 +1,5 @@
 import { useRef, useEffect } from 'react';
-import { getStickPairs } from '../utils/axisDetection';
+import { findRightStickAxes } from '../utils/axisDetection';
 
 const SIZE = 150;
 const CENTER = SIZE / 2;
@@ -86,32 +86,29 @@ function StickCanvas({ axes, xIdx, yIdx, label }) {
 export default function StickVisualizer({ gamepad }) {
   if (!gamepad) return null;
 
-  const pairs = getStickPairs(gamepad.axes);
+  const rs = findRightStickAxes(gamepad.axes);
 
   return (
     <div style={{ marginBottom: '16px' }}>
       <h3 style={{ margin: '0 0 12px', fontSize: '14px', color: '#aaa', textTransform: 'uppercase', letterSpacing: '1px' }}>
-        Axes
+        Analog Sticks
       </h3>
 
       <div style={{ display: 'flex', gap: '16px', justifyContent: 'center', flexWrap: 'wrap' }}>
-        {pairs.map((p, i) => (
-          <StickCanvas key={i} axes={gamepad.axes} xIdx={p.x} yIdx={p.y} label={p.label} />
-        ))}
+        <StickCanvas axes={gamepad.axes} xIdx={0} yIdx={1} label="Left Stick" />
+        <StickCanvas axes={gamepad.axes} xIdx={rs.xIdx} yIdx={rs.yIdx} label="Right Stick" />
       </div>
 
       <div style={{ display: 'flex', gap: '6px', flexWrap: 'wrap', justifyContent: 'center', marginTop: '10px', fontSize: '11px', color: '#666' }}>
         {gamepad.axes.map((v, i) => (
           <span key={i} style={{ background: '#151525', padding: '2px 8px', borderRadius: '4px', border: '1px solid #222' }}>
             {i}: {v.toFixed(3)}
-            {pairs.some(p => p.x === i) && <span style={{ color: '#4caf50', marginLeft: '3px' }}>X</span>}
-            {pairs.some(p => p.y === i) && <span style={{ color: '#4caf50', marginLeft: '3px' }}>Y</span>}
           </span>
         ))}
       </div>
 
       {gamepad.axes.length < 2 && (
-        <div style={{ color: '#666', fontSize: '13px', textAlign: 'center' }}>No axes detected</div>
+        <div style={{ color: '#666', fontSize: '13px', textAlign: 'center' }}>No analog sticks detected</div>
       )}
     </div>
   );
